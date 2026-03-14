@@ -20,22 +20,6 @@ router.post("/", async (req, res) => {
     res.status(500).json({ error: "Something went wrong" });
   }
 });
-router.get("/:userId", async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const result = await pool.query(
-      `SELECT * FROM journal_entries
-          WHERE user_id = $1
-          ORDER BY created_at DESC`,
-      [userId],
-    );
-    res.json(result.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Something went wrong" });
-  }
-});
-
 router.post("/analyze", async (req, res) => {
   try {
     const { text, entryId } = req.body;
@@ -52,7 +36,6 @@ router.post("/analyze", async (req, res) => {
     res.status(500).json({ error: "Something went wrong" });
   }
 });
-
 router.get("/insights/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
@@ -111,4 +94,20 @@ router.get("/insights/:userId", async (req, res) => {
     res.status(500).json({ error: "Something went wrong" });
   }
 });
+router.get("/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const result = await pool.query(
+      `SELECT * FROM journal_entries
+          WHERE user_id = $1
+          ORDER BY created_at DESC`,
+      [userId],
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
 export default router;
