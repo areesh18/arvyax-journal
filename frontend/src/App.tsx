@@ -38,6 +38,8 @@ export default function App() {
   const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showDemoNotice, setShowDemoNotice] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const fetchEntries = async () => {
     if (!userId) return;
@@ -45,6 +47,7 @@ export default function App() {
     setEntries(res.data);
     const insightsRes = await axios.get(`${API}/insights/${userId}`);
     setInsights(insightsRes.data);
+    setLoaded(true);
   };
 
   useEffect(() => {
@@ -54,6 +57,8 @@ export default function App() {
   const handleSetUser = (email: string) => {
     if (!email) return;
     localStorage.setItem("arvyax_user_id", email);
+    setLoaded(false);
+    setShowDemoNotice(email === "demo@arvyax.com");
     setUserId(email);
   };
 
@@ -85,6 +90,8 @@ export default function App() {
     setUserId("");
     setEntries([]);
     setInsights(null);
+    setShowDemoNotice(false);
+    setLoaded(false);
   };
 
   // Welcome screen
@@ -94,7 +101,7 @@ export default function App() {
         className="min-h-screen relative overflow-hidden"
         style={{ fontFamily: "'DM Sans', sans-serif" }}
       >
-        {/* Blurred background — shows the main app UI behind */}
+        {/* Blurred background */}
         <div className="absolute inset-0 filter blur-sm pointer-events-none select-none opacity-60">
           <div className="bg-stone-800 py-6 px-6">
             <div className="max-w-2xl mx-auto">
@@ -129,6 +136,18 @@ export default function App() {
               <p className="text-stone-500 text-sm">
                 Your nature session companion
               </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 space-y-1 text-left">
+                <p>
+                  💡 <strong>Demo tip:</strong> Enter any email to start fresh,
+                  or use the pre-populated demo account below.
+                </p>
+                <button
+                  onClick={() => setEmailInput("demo@arvyax.com")}
+                  className="w-full mt-1 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded px-2 py-1.5 font-medium transition"
+                >
+                  Use demo@arvyax.com →
+                </button>
+              </div>
             </div>
             <div className="space-y-3">
               <input
@@ -149,7 +168,8 @@ export default function App() {
               </button>
             </div>
             <p className="text-xs text-stone-400 text-center">
-              No password needed. Just your email.
+              In production this would be replaced with proper auth. For this
+              demo, email = unique user identifier.
             </p>
           </div>
         </div>
@@ -159,12 +179,20 @@ export default function App() {
 
   // Main app
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-800 font-serif">
+    <div
+      className="min-h-screen bg-stone-50 text-stone-800"
+      style={{ fontFamily: "'DM Sans', sans-serif" }}
+    >
       {/* Header */}
       <div className="bg-stone-800 text-stone-100 py-6 px-6">
         <div className="max-w-2xl mx-auto">
           <div className="flex justify-between items-start">
-            <h1 className="text-2xl font-bold tracking-wide">ArvyaX Journal</h1>
+            <h1
+              className="text-2xl font-bold tracking-wide"
+              style={{ fontFamily: "'Playfair Display', serif" }}
+            >
+              ArvyaX Journal
+            </h1>
             <button
               onClick={handleSignOut}
               className="bg-red-600 hover:bg-red-700 text-white text-sm px-4 py-1.5 rounded-lg transition"
@@ -181,16 +209,64 @@ export default function App() {
               <p className="text-sm font-medium">{userId}</p>
             </div>
           </div>
+          <p className="text-xs text-stone-500 mt-2">
+            💡 Each email has its own isolated journal entries and insights.
+          </p>
         </div>
       </div>
 
+      {/* Demo notice */}
+      {loaded && showDemoNotice && (
+        <div className="max-w-2xl mx-auto px-4 pt-6">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex justify-between items-start gap-4">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-amber-800">
+                👋 Welcome to the Demo Account
+              </p>
+              <p className="text-xs text-amber-700">
+                This account is pre-populated with journal entries across
+                forest, ocean, and mountain sessions — all already analyzed.
+                Check the insights panel to see emotion trends and keywords.
+                Feel free to add new entries or analyze existing ones.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowDemoNotice(false)}
+              className="text-amber-500 hover:text-amber-700 text-lg leading-none transition"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* New user welcome */}
+      {loaded && !showDemoNotice && entries.length === 0 && userId !== "demo@arvyax.com" && (
+        <div className="max-w-2xl mx-auto px-4 pt-6">
+          <div className="bg-stone-100 border border-stone-200 rounded-xl px-5 py-4 space-y-1">
+            <p className="text-sm font-semibold text-stone-700">
+              👋 Welcome to your journal!
+            </p>
+            <p className="text-xs text-stone-500">
+              This is your personal nature journal. Here's how it works:
+            </p>
+            <ul className="text-xs text-stone-500 list-disc list-inside space-y-0.5 pt-1">
+              <li>Select an ambience — forest, ocean or mountain</li>
+              <li>Write how your session made you feel</li>
+              <li>Hit <strong>Save Entry</strong> to store it</li>
+              <li>Click <strong>Analyze</strong> to let AI detect your emotion</li>
+              <li>Check <strong>Insights</strong> to see your mental patterns over time</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
+
         {/* Insights Panel */}
         <div className="bg-white border border-stone-200 rounded-xl p-5 space-y-3">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-stone-700">
-              Your Insights
-            </h2>
+            <h2 className="text-lg font-semibold text-stone-700">Your Insights</h2>
             <button
               onClick={fetchEntries}
               className="text-sm text-stone-500 hover:text-stone-700 transition"
@@ -205,9 +281,7 @@ export default function App() {
                 <p className="text-xs text-stone-500 mt-1">Entries</p>
               </div>
               <div className="bg-stone-100 rounded-lg p-3 text-center">
-                <p className="text-lg font-bold">
-                  {insights.topEmotion ?? "—"}
-                </p>
+                <p className="text-lg font-bold">{insights.topEmotion ?? "—"}</p>
                 <p className="text-xs text-stone-500 mt-1">Top Emotion</p>
               </div>
               <div className="bg-stone-100 rounded-lg p-3 text-center">
@@ -293,7 +367,9 @@ export default function App() {
                   <span>
                     {ambienceEmoji[entry.ambience]} {entry.ambience}
                   </span>
-                  <span>{new Date(entry.created_at).toLocaleDateString()}</span>
+                  <span>
+                    {new Date(entry.created_at).toLocaleDateString()}
+                  </span>
                 </div>
                 <p className="text-stone-700">{entry.text}</p>
                 {entry.emotion ? (
