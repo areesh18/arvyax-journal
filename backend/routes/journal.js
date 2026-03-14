@@ -27,8 +27,14 @@ router.get("/:userId", async (req, res) => {
 });
 
 router.post("/analyze", async (req, res) => {
-  const { text } = req.body;
+  const { text, entryId } = req.body;
   const analysis = await analyzeEmotion(text);
-  res.json(analysis)
+  await pool.query(
+    `UPDATE journal_entries
+    SET emotion= $1, keywords=$2, summary=$3
+    WHERE id= $4`,
+    [analysis.emotion, analysis.keywords, analysis.summary, entryId],
+  );
+  res.json(analysis);
 });
 export default router;
