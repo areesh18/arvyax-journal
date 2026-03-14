@@ -7,7 +7,7 @@ interface Props {
   onSignOut: () => void;
 }
 
-const API = "http://localhost:3000/api/journal";
+const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api/journal";
 
 const ambienceConfig: Record<
   string,
