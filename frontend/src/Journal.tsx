@@ -9,37 +9,25 @@ interface Props {
 
 const API = "http://localhost:3000/api/journal";
 
-const ambienceConfig: Record<string, { emoji: string; label: string; description: string; color: string }> = {
+const ambienceConfig: Record<
+  string,
+  { emoji: string; label: string; description: string }
+> = {
   forest: {
     emoji: "🌲",
     label: "Forest",
-    description: "Rustling leaves, cool shade, birdsong",
-    color: "emerald",
+    description: "Leaves, birdsong, cool shade",
   },
   ocean: {
     emoji: "🌊",
     label: "Ocean",
-    description: "Waves, salt air, endless horizon",
-    color: "cyan",
+    description: "Waves, salt air, horizon",
   },
   mountain: {
     emoji: "🏔️",
     label: "Mountain",
-    description: "Cold air, silence, vast stillness",
-    color: "slate",
+    description: "Silence, cold air, vastness",
   },
-};
-
-const colorMap: Record<string, string> = {
-  emerald: "border-emerald-500/50 bg-emerald-900/20 text-emerald-300",
-  cyan: "border-cyan-500/50 bg-cyan-900/20 text-cyan-300",
-  slate: "border-slate-400/50 bg-slate-700/20 text-slate-300",
-};
-
-const colorMapInactive: Record<string, string> = {
-  emerald: "hover:border-emerald-500/20 hover:bg-emerald-900/10",
-  cyan: "hover:border-cyan-500/20 hover:bg-cyan-900/10",
-  slate: "hover:border-slate-400/20 hover:bg-slate-700/10",
 };
 
 export default function Journal({ userId, onSignOut }: Props) {
@@ -48,21 +36,27 @@ export default function Journal({ userId, onSignOut }: Props) {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingId, setLoadingId] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
-  const [showDemoNotice, setShowDemoNotice] = useState(userId === "demo@arvyax.com");
   const [loaded, setLoaded] = useState(false);
+  const [fetching, setFetching] = useState(true);
+  const [showDemoNotice, setShowDemoNotice] = useState(
+    userId === "demo@arvyax.com",
+  );
 
   const hour = new Date().getHours();
-  const timeGreeting =
+  const greeting =
     hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const displayName = userId.split("@")[0];
 
   const fetchEntries = async () => {
+    setFetching(true);
     const res = await axios.get(`${API}/${userId}`);
     setEntries(res.data);
     const insightsRes = await axios.get(`${API}/insights/${userId}`);
     setInsights(insightsRes.data);
     setLoaded(true);
+    setFetching(false);
   };
 
   useEffect(() => {
@@ -79,43 +73,51 @@ export default function Journal({ userId, onSignOut }: Props) {
   };
 
   const analyzeEntry = async (entryId: number, entryText: string) => {
+    setLoadingId(entryId);
     await axios.post(`${API}/analyze`, { entryId, text: entryText });
     await fetchEntries();
+    setLoadingId(null);
   };
 
   const analyzeAll = async () => {
     setLoading(true);
     const unanalyzed = entries.filter((e) => e.emotion === null);
     for (const entry of unanalyzed) {
-      await analyzeEntry(entry.id, entry.text);
+      setLoadingId(entry.id);
+      await axios.post(`${API}/analyze`, {
+        entryId: entry.id,
+        text: entry.text,
+      });
+      await fetchEntries();
     }
+    setLoadingId(null);
     setLoading(false);
   };
 
   return (
     <div
-      className="min-h-screen bg-zinc-950 text-white"
+      className="min-h-screen bg-stone-100"
       style={{ fontFamily: "'DM Sans', sans-serif" }}
     >
-      {/* Top bar */}
-      <div className="border-b border-white/5 px-6 py-4 sticky top-0 bg-zinc-950/80 backdrop-blur-xl z-10">
+      {/* Header */}
+      <div className="bg-white border-b border-stone-200 px-6 py-4 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto flex justify-between items-center">
-          <p
-            className="text-white font-bold tracking-widest text-sm"
+          <h1
+            className="text-xl font-bold text-stone-900"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
-            ARVYA.X
-          </p>
+            ARVYA.X Soul Journal
+          </h1>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-emerald-700 flex items-center justify-center text-xs font-bold">
+              <div className="w-8 h-8 rounded-full bg-stone-900 text-white flex items-center justify-center text-sm font-bold">
                 {userId[0].toUpperCase()}
               </div>
-              <p className="text-white/40 text-xs hidden sm:block">{userId}</p>
+              <p className="text-stone-500 text-sm hidden sm:block">{userId}</p>
             </div>
             <button
               onClick={onSignOut}
-              className="text-white/20 hover:text-white/50 text-xs border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-lg transition"
+              className="text-sm text-stone-500 hover:text-stone-800 border border-stone-300 px-3 py-1.5 rounded-lg transition"
             >
               Sign out
             </button>
@@ -123,39 +125,52 @@ export default function Journal({ userId, onSignOut }: Props) {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-10 space-y-10">
-
-        {/* Hero greeting */}
-        <div className="space-y-1">
-          <p className="text-white/30 text-sm tracking-widest uppercase">Soul Journal</p>
-          <h1
-            className="text-4xl font-bold text-white"
-            style={{ fontFamily: "'Playfair Display', serif" }}
-          >
-            {timeGreeting}, <span className="text-emerald-400">{displayName}.</span>
-          </h1>
-          <p className="text-white/30 text-sm">
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
+        {/* Greeting */}
+        <div>
+          <p className="text-stone-400 text-sm">
             {new Date().toLocaleDateString("en-US", {
               weekday: "long",
               month: "long",
               day: "numeric",
             })}
           </p>
+          <h2
+            className="text-3xl font-bold text-stone-900 mt-1"
+            style={{ fontFamily: "'Playfair Display', serif" }}
+          >
+            {greeting}, <span className="text-emerald-600">{displayName}.</span>
+          </h2>
         </div>
-
+        {fetching && (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="bg-white border border-stone-200 rounded-xl p-5 animate-pulse"
+              >
+                <div className="h-3 bg-stone-200 rounded w-1/4 mb-3" />
+                <div className="h-3 bg-stone-200 rounded w-full mb-2" />
+                <div className="h-3 bg-stone-200 rounded w-3/4" />
+              </div>
+            ))}
+          </div>
+        )}
         {/* Demo notice */}
         {loaded && showDemoNotice && (
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl px-5 py-4 flex justify-between items-start gap-4">
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-amber-300">👋 Demo Account</p>
-              <p className="text-xs text-amber-300/60 leading-relaxed">
-                Pre-populated with forest, ocean and mountain sessions — all analyzed.
-                Explore insights or add new entries to see it update live.
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex justify-between items-start gap-4">
+            <div>
+              <p className="text-amber-800 font-semibold text-sm">
+                👋 This is a Demo Account
+              </p>
+              <p className="text-amber-700 text-sm mt-1 leading-relaxed">
+                Pre-populated with forest, ocean and mountain sessions — all
+                analyzed. Explore insights below or add new entries.
               </p>
             </div>
             <button
               onClick={() => setShowDemoNotice(false)}
-              className="text-amber-500/40 hover:text-amber-300 transition text-base leading-none shrink-0"
+              className="text-amber-400 hover:text-amber-700 text-xl leading-none"
             >
               ✕
             </button>
@@ -164,53 +179,63 @@ export default function Journal({ userId, onSignOut }: Props) {
 
         {/* New user welcome */}
         {loaded && !showDemoNotice && entries.length === 0 && (
-          <div className="bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-5 space-y-2">
-            <p className="text-white/70 text-sm font-semibold">Your journal is empty.</p>
-            <p className="text-white/30 text-xs leading-relaxed">
-              After your next ArvyaX session — forest, ocean or mountain — write how it made you feel.
-              The AI will decode your emotion and build your mental wellness picture over time.
+          <div className="bg-white border border-stone-200 rounded-xl px-5 py-5 space-y-2">
+            <p className="text-stone-800 font-semibold text-base">
+              Your journal is empty.
+            </p>
+            <p className="text-stone-500 text-sm leading-relaxed">
+              After your next ArvyaX session, write how it made you feel below.
+              Hit <strong>Save Entry</strong>, then <strong>Analyze</strong> to
+              let AI detect your emotion. Over time, your insights will build up
+              here.
             </p>
           </div>
         )}
 
         {/* Insights */}
         {insights && insights.totalEntries > 0 && (
-          <div className="space-y-4">
+          <div className="bg-white border border-stone-200 rounded-xl p-5 space-y-4">
             <div className="flex justify-between items-center">
-              <p className="text-white/30 text-xs tracking-widest uppercase">Your Patterns</p>
+              <h3 className="text-stone-800 font-semibold text-base">
+                Your Insights
+              </h3>
               <button
                 onClick={fetchEntries}
-                className="text-white/20 hover:text-white/50 text-xs transition"
+                className="text-stone-400 hover:text-stone-700 text-sm transition"
               >
                 Refresh
               </button>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-                <p className="text-3xl font-bold text-white">{insights.totalEntries}</p>
-                <p className="text-white/30 text-xs mt-1">Sessions</p>
+              <div className="bg-stone-50 rounded-xl p-4 text-center">
+                <p className="text-3xl font-bold text-stone-900">
+                  {insights.totalEntries}
+                </p>
+                <p className="text-stone-400 text-xs mt-1">Sessions</p>
               </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-                <p className="text-base font-bold text-emerald-400 leading-tight">
+              <div className="bg-stone-50 rounded-xl p-4 text-center">
+                <p className="text-base font-bold text-emerald-600">
                   {insights.topEmotion ?? "—"}
                 </p>
-                <p className="text-white/30 text-xs mt-1">Top Emotion</p>
+                <p className="text-stone-400 text-xs mt-1">Top Emotion</p>
               </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+              <div className="bg-stone-50 rounded-xl p-4 text-center">
                 <p className="text-2xl">
-                  {ambienceConfig[insights.mostUsedAmbience ?? ""]?.emoji ?? "—"}
+                  {ambienceConfig[insights.mostUsedAmbience ?? ""]?.emoji ??
+                    "—"}
                 </p>
-                <p className="text-white/30 text-xs mt-1">
-                  {ambienceConfig[insights.mostUsedAmbience ?? ""]?.label ?? "Ambience"}
+                <p className="text-stone-400 text-xs mt-1">
+                  {ambienceConfig[insights.mostUsedAmbience ?? ""]?.label ??
+                    "Ambience"}
                 </p>
               </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                <p className="text-white/30 text-xs mb-2">Keywords</p>
+              <div className="bg-stone-50 rounded-xl p-4">
+                <p className="text-stone-400 text-xs mb-2">Keywords</p>
                 <div className="flex flex-wrap gap-1">
                   {insights.recentKeywords.slice(0, 3).map((k) => (
                     <span
                       key={k}
-                      className="text-xs bg-emerald-900/40 text-emerald-400 rounded-full px-2 py-0.5"
+                      className="text-xs bg-emerald-100 text-emerald-700 rounded-full px-2 py-0.5"
                     >
                       {k}
                     </span>
@@ -222,8 +247,8 @@ export default function Journal({ userId, onSignOut }: Props) {
         )}
 
         {/* New Entry */}
-        <div className="space-y-4">
-          <p className="text-white/30 text-xs tracking-widest uppercase">New Entry</p>
+        <div className="bg-white border border-stone-200 rounded-xl p-5 space-y-4">
+          <h3 className="text-stone-800 font-semibold text-base">New Entry</h3>
 
           {/* Ambience selector */}
           <div className="grid grid-cols-3 gap-3">
@@ -231,53 +256,58 @@ export default function Journal({ userId, onSignOut }: Props) {
               <button
                 key={key}
                 onClick={() => setAmbience(key)}
-                className={`rounded-2xl p-4 text-left border transition ${
+                className={`rounded-xl p-4 text-left border transition ${
                   ambience === key
-                    ? colorMap[val.color]
-                    : `border-white/10 bg-white/[0.02] text-white/30 ${colorMapInactive[val.color]}`
+                    ? "border-emerald-500 bg-emerald-50"
+                    : "border-stone-200 bg-stone-50 hover:border-stone-300"
                 }`}
               >
-                <p className="text-2xl mb-2">{val.emoji}</p>
-                <p className="text-sm font-semibold">{val.label}</p>
-                <p className="text-xs opacity-60 mt-0.5 leading-snug">{val.description}</p>
+                <p className="text-2xl">{val.emoji}</p>
+                <p
+                  className={`text-sm font-semibold mt-2 ${ambience === key ? "text-emerald-700" : "text-stone-700"}`}
+                >
+                  {val.label}
+                </p>
+                <p className="text-xs text-stone-400 mt-0.5 leading-snug">
+                  {val.description}
+                </p>
               </button>
             ))}
           </div>
 
           {/* Textarea */}
-          <div className="space-y-2">
-            <textarea
-              placeholder="What did you feel during your session? Write freely..."
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={5}
-              className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-4 text-white/80 placeholder-white/15 focus:outline-none focus:border-emerald-500/30 resize-none text-sm leading-relaxed transition"
-            />
-            <div className="flex justify-between items-center">
-              <p className="text-white/15 text-xs">{text.length} characters</p>
-              <button
-                onClick={submitEntry}
-                disabled={!text.trim()}
-                className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-20 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-xl font-medium text-sm transition active:scale-[0.98]"
-              >
-                Save Entry
-              </button>
-            </div>
-            {saved && (
-              <p className="text-emerald-400 text-xs">✓ Entry saved successfully</p>
-            )}
+          <textarea
+            placeholder="How did your session make you feel? Write freely..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={5}
+            className="w-full border border-stone-200 bg-stone-50 rounded-xl px-4 py-3 text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none text-sm leading-relaxed"
+          />
+
+          <div className="flex justify-between items-center">
+            <p className="text-stone-400 text-xs">{text.length} characters</p>
+            <button
+              onClick={submitEntry}
+              disabled={!text.trim()}
+              className="bg-stone-900 hover:bg-stone-700 disabled:opacity-30 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition"
+            >
+              Save Entry
+            </button>
           </div>
+          {saved && <p className="text-emerald-600 text-sm">✓ Entry saved</p>}
         </div>
 
-        {/* Past Sessions */}
+        {/* Past sessions */}
         {entries.length > 0 && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <p className="text-white/30 text-xs tracking-widest uppercase">Past Sessions</p>
+              <h3 className="text-stone-800 font-semibold text-base">
+                Past Sessions
+              </h3>
               <button
                 onClick={analyzeAll}
                 disabled={loading}
-                className="text-xs border border-emerald-500/20 bg-emerald-900/20 text-emerald-400 hover:bg-emerald-900/40 px-3 py-1.5 rounded-lg transition disabled:opacity-30"
+                className="text-sm bg-stone-900 hover:bg-stone-700 text-white px-4 py-2 rounded-xl transition disabled:opacity-30"
               >
                 {loading ? "Analyzing..." : "Analyze All"}
               </button>
@@ -286,15 +316,17 @@ export default function Journal({ userId, onSignOut }: Props) {
             {entries.map((entry) => (
               <div
                 key={entry.id}
-                className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden"
+                className="bg-white border border-stone-200 rounded-xl overflow-hidden"
               >
                 {/* Entry header */}
-                <div className="px-5 pt-5 pb-3 flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <span>{ambienceConfig[entry.ambience]?.emoji}</span>
-                    <span className="text-white/40 text-xs capitalize">{entry.ambience}</span>
-                  </div>
-                  <span className="text-white/20 text-xs">
+                <div className="px-5 py-4 flex justify-between items-center border-b border-stone-100">
+                  <span className="text-stone-600 text-sm flex items-center gap-2">
+                    {ambienceConfig[entry.ambience]?.emoji}
+                    <span className="capitalize font-medium">
+                      {entry.ambience}
+                    </span>
+                  </span>
+                  <span className="text-stone-400 text-sm">
                     {new Date(entry.created_at).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
@@ -304,37 +336,71 @@ export default function Journal({ userId, onSignOut }: Props) {
                 </div>
 
                 {/* Entry text */}
-                <div className="px-5 pb-4">
-                  <p className="text-white/60 text-sm leading-relaxed">{entry.text}</p>
+                <div className="px-5 py-4">
+                  <p className="text-stone-700 text-sm leading-relaxed">
+                    {entry.text}
+                  </p>
                 </div>
 
-                {/* Analysis or button */}
+                {/* Analysis */}
                 {entry.emotion ? (
-                  <div className="border-t border-white/5 px-5 py-4 bg-black/20 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-white/20 uppercase tracking-widest">Emotion</span>
-                      <span className="text-sm font-semibold text-emerald-400">{entry.emotion}</span>
+                  <div className="border-t border-stone-100 bg-stone-50 px-5 py-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-stone-400 text-xs uppercase tracking-widest">
+                        Emotion
+                      </span>
+                      <span className="text-emerald-600 font-semibold text-sm">
+                        {entry.emotion}
+                      </span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {entry.keywords?.map((k) => (
                         <span
                           key={k}
-                          className="text-xs bg-white/5 border border-white/10 text-white/30 rounded-full px-2.5 py-0.5"
+                          className="text-xs bg-white border border-stone-200 text-stone-500 rounded-full px-2.5 py-0.5"
                         >
                           {k}
                         </span>
                       ))}
                     </div>
-                    <p className="text-white/20 text-xs italic leading-relaxed">{entry.summary}</p>
+                    <p className="text-stone-400 text-xs italic leading-relaxed">
+                      {entry.summary}
+                    </p>
                   </div>
                 ) : (
-                  <div className="border-t border-white/5 px-5 py-3">
+                  <div className="border-t border-stone-100 px-5 py-3">
                     <button
                       onClick={() => analyzeEntry(entry.id, entry.text)}
-                      disabled={loading}
-                      className="text-xs text-white/30 hover:text-white/60 transition disabled:opacity-20"
+                      disabled={loadingId === entry.id || loading}
+                      className="text-sm text-stone-500 hover:text-stone-900 font-medium transition disabled:opacity-30 flex items-center gap-2"
                     >
-                      + Analyze with AI
+                      {loadingId === entry.id ? (
+                        <>
+                          <svg
+                            className="animate-spin h-3 w-3 text-stone-400"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8v8z"
+                            />
+                          </svg>
+                          Analyzing...
+                        </>
+                      ) : (
+                        "+ Analyze with AI"
+                      )}
                     </button>
                   </div>
                 )}
@@ -344,10 +410,9 @@ export default function Journal({ userId, onSignOut }: Props) {
         )}
 
         {/* Footer */}
-        <div className="text-center pt-4 pb-8">
-          <p className="text-white/10 text-xs">ARVYA.X Soul Journal · Built for ArvyaX Assignment</p>
-        </div>
-
+        <p className="text-stone-300 text-xs text-center pb-6">
+          ARVYA.X Soul Journal · Built for ArvyaX Full-Stack Assignment
+        </p>
       </div>
     </div>
   );

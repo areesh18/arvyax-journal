@@ -84,14 +84,21 @@ router.get("/insights/:userId", async (req, res) => {
 
     const keywordsResult = await pool.query(
       `SELECT keywords FROM journal_entries 
-               WHERE user_id = $1 AND keywords IS NOT NULL
-               ORDER BY created_at DESC 
-               LIMIT 5`,
+   WHERE user_id = $1 AND keywords IS NOT NULL`,
       [userId],
     );
-    const recentKeywords = keywordsResult.rows
-      .flatMap((row) => row.keywords)
-      .slice(0, 10);
+
+    const allKeywords = keywordsResult.rows.flatMap((row) => row.keywords);
+
+    const frequency = {};
+    for (const word of allKeywords) {
+      frequency[word] = (frequency[word] || 0) + 1;
+    }
+
+    const recentKeywords = Object.entries(frequency)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([word]) => word);
 
     res.json({
       totalEntries: parseInt(totalResult.rows[0].count),

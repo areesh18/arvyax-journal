@@ -17,9 +17,6 @@ export default function App() {
     setUserId("");
   };
 
-  if (!userId) {
-    return <Login onLogin={handleLogin} />;
-  }
-
+  if (!userId) return <Login onLogin={handleLogin} />;
   return <Journal userId={userId} onSignOut={handleSignOut} />;
 }
