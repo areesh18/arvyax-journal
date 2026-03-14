@@ -37,4 +37,51 @@ router.post("/analyze", async (req, res) => {
   );
   res.json(analysis);
 });
+
+router.get("/insights/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const totalResult = await pool.query(
+    `SELECT COUNT(*) 
+    FROM journal_entries
+    WHERE user_id=$1`,
+    [userId],
+  );
+
+  const topEmotionResult = await pool.query(
+    `SELECT emotion, COUNT(*) as count
+    FROM journal_entries 
+    WHERE user_id=$1 AND emotion IS NOT NULL
+    GROUP BY emotion
+    ORDER BY count DESC
+    LIMIT 1`,
+    [userId],
+  );
+  const topAmbienceResult = await pool.query(
+    `SELECT ambience, COUNT(*) as count 
+         FROM journal_entries 
+         WHERE user_id = $1
+         GROUP BY ambience 
+         ORDER BY count DESC 
+         LIMIT 1`,
+    [userId],
+  );
+
+  const keywordsResult = await pool.query(
+    `SELECT keywords FROM journal_entries 
+         WHERE user_id = $1 AND keywords IS NOT NULL
+         ORDER BY created_at DESC 
+         LIMIT 5`,
+    [userId],
+  );
+  const recentKeywords = keywordsResult.rows
+    .flatMap((row) => row.keywords)
+    .slice(0, 10);
+
+  res.json({
+    totalEntries: parseInt(totalResult.rows[0].count),
+    topEmotion: topEmotionResult.rows[0]?.emotion || null,
+    mostUsedAmbience: topAmbienceResult.rows[0]?.ambience || null,
+    recentKeywords,
+  });
+});
 export default router;
