@@ -39,6 +39,7 @@ export default function Journal({ userId, onSignOut }: Props) {
   const [loadingId, setLoadingId] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [showDemoNotice, setShowDemoNotice] = useState(
     userId === "demo@arvyax.com",
@@ -65,13 +66,14 @@ export default function Journal({ userId, onSignOut }: Props) {
 
   const submitEntry = async () => {
     if (!text.trim()) return;
+    setSaving(true);
     await axios.post(API, { userId, ambience, text });
     setText("");
     setSaved(true);
+    setSaving(false);
     setTimeout(() => setSaved(false), 3000);
     fetchEntries();
   };
-
   const analyzeEntry = async (entryId: number, entryText: string) => {
     setLoadingId(entryId);
     await axios.post(`${API}/analyze`, { entryId, text: entryText });
@@ -288,10 +290,36 @@ export default function Journal({ userId, onSignOut }: Props) {
             <p className="text-stone-400 text-xs">{text.length} characters</p>
             <button
               onClick={submitEntry}
-              disabled={!text.trim()}
-              className="bg-stone-900 hover:bg-stone-700 disabled:opacity-30 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition"
+              disabled={!text.trim() || saving}
+              className="bg-stone-900 hover:bg-stone-700 disabled:opacity-30 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition flex items-center gap-2"
             >
-              Save Entry
+              {saving ? (
+                <>
+                  <svg
+                    className="animate-spin h-3 w-3 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8z"
+                    />
+                  </svg>
+                  Saving...
+                </>
+              ) : (
+                "Save Entry"
+              )}
             </button>
           </div>
           {saved && <p className="text-emerald-600 text-sm">✓ Entry saved</p>}
