@@ -1,5 +1,6 @@
 import express, { Router } from "express";
 import pool from "../db/index.js";
+import { analyzeEmotion } from "../services/llm.js";
 
 const router = express.Router();
 
@@ -23,5 +24,11 @@ router.get("/:userId", async (req, res) => {
     [userId],
   );
   res.json(result.rows);
+});
+
+router.post("/analyze", async (req, res) => {
+  const { text } = req.body;
+  const analysis = await analyzeEmotion(text);
+  res.json(analysis)
 });
 export default router;
